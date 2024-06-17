@@ -1,1 +1,1 @@
-# intro_causal_inf
+# Demonstration files to accompany Siegel & Dee
