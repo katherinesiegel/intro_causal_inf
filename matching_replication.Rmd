@@ -342,6 +342,46 @@ weighted_coeff <- as.data.frame(weighted_summary$coefficients)
 weighted_coeff <- weighted_coeff %>% rownames_to_column()
 ```
 
+## Compare outputs
+```{r}
+### add identifying column for coefficient tables
+naive_coeff <- naive_coeff %>%
+  mutate(model = "naive")
+matched_coeff <- matched_coeff %>%
+  mutate(model = "matched")
+weighted_coeff <- weighted_coeff %>%
+  mutate(model = "weighted")
+
+### combine 
+all_coeff <- rbind(naive_coeff,
+                   matched_coeff,
+                   weighted_coeff)
+
+### fix column names
+colnames(all_coeff) <- c("variable",
+                         "estimate",
+                         "std_error",
+                         "z_value",
+                         "p_value",
+                         "model")
+
+### plot
+all_coeff %>%
+  filter(variable == "prot_cat_recl1") %>%
+  ggplot() +
+  geom_point(aes(x = model,
+             y = estimate)) +
+  geom_errorbar(aes(ymin = estimate - std_error, 
+                    ymax = estimate + std_error,
+                    x = model),
+                width = .1) +
+  scale_x_discrete(limits = c('naive', 'matched', 
+                     'weighted')) +
+  theme_bw()
+```
+
+
+
 ## background code (just for me)
 ### make data set for regression
 ```{r}
