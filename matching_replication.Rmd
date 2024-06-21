@@ -1,23 +1,63 @@
 ---
-title: "Replication exercise for matching methods"
-author: "Katherine Siegel"
-date: "2023-02-21"
+title: "Tutorial on propensity score matching and inverse probability of treatment weighting"
+author: "Katherine Siegel and Laura Dee"
+date: "2024-06-17"
 output: html_document
 ---
 
 ## Description
-In this replication exercise, you will use some of the data from Siegel et al. 2022 (https://doi.org/10.1007/s10113-022-01950-y). The dataset for the entire western US is very large and unwieldy, so you'll work with data from a single state: Colorado. Note: all the code is commented out in this Rmd -- you'll need to uncomment the parts you want to use.
+- tutorial for using propensity score matching and inverse probability of treatment weighting
+- uses some of the data from Siegel et al. 2022 (https://doi.org/10.1007/s10113-022-01950-y). The dataset for the entire western US is very large and unwieldy, so you'll work with data from a single state: Colorado. 
 
 ## Set up
+Load the packages used for data manipulation (tidyverse, sf), making a directed acyclic graph (ggdag), matching (MatchIt), weighting (WeightIt and ipw), and regression models (lme4).
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-# ### load libraries
-# library(tidyverse)
-# library(sf)
-# library(MatchIt)
-# library(lme4)
+### load libraries
+library(tidyverse) ## for basic coding
+library(sf) ## for dealing with shapefiles
+library(ggdag) ## for making a directed acyclic graph (DAG)
+library(MatchIt) ## for matching
+library(WeightIt) ## for weighting
+library(ipw) ## for weighting
+library(lme4) ## for regression models after matching/weighting
 ```
+
+## The context
+The Siegel et al. 2022 study examines the effect of forest management (through the proxy of land ownership) on annual burn probability in forests of the western US. Specifically, it looks at the effect of federal (treatment) vs. private (control) ownership on wildfire occurrence in sample units.
+
+### Directed acyclic graph
+Here's a DAG for the research question:
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+### make dag
+fire_dag <- dagify(burn_prob ~ land_own + confound_covar,
+                   land_own ~ confound_covar,
+                   
+                   ### label nodes
+                   labels = c("burn_prob" = "Burn probability",
+                              "land_own" = "Land ownership",
+                              "confound_covar" = "Climate,\n geographic,\n and human\n covariates"),
+                   exposure = "land_own",
+                   outcome = "burn_prob",
+                   
+                   ### add coordinates
+                   coords = list(x = c(land_own = 1, 
+                                       burn_prob = 3,
+                                       confound_covar = 2),
+                                 y = c(land_own = 1, 
+                                       burn_prob = 1,
+                                       confound_covar = 2)))
+
+### plot dag
+ggdag_status(fire_dag,
+             use_labels = "label",
+             text = FALSE,
+             label_alpha = 0.5) +
+  guides(fill = FALSE, color = FALSE) +
+  theme_dag()
+```
+
 
 ## The data
 There are two data files you can play around with for this exercise: *colo_dat_full.csv* and *colo_data_for_matching.csv*. *colo_dat_full.csv* has the entire time series of data for the full (unmatched) dataset of federal and private forests in Colorado. *colo_data_for_matching.csv* is a file that's ready for the matching process without additional pre-processing: it has a row for each sample point in Colorado and five-year averages for the climate variables. 
@@ -68,144 +108,201 @@ All the climate variables are variablename_5 to indicate that they are 5-year av
 * popdens_2010: population density (per km2) in 2010  
 
 
-## Prep the data
-```{r}
+## Data exploration
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
+### open data
+dat <- read_csv("matching_ipw_data_full.csv")
 
+### set factor variables
+dat <- dat %>%
+  mutate_at(vars(state,
+                 UID,
+                 burned,
+                 prot_cat_recl),
+            factor)
+
+### basic data exploration
+
+### what's the breakdown of private vs. federal sample units? 
+table(dat$prot_cat_recl) ## 22,878 private units and 60,654 federal units
+
+### what's the breakdown of sample units that burned in 2002?
+table(dat$burned) ## 82190 did not burn, while 1342 burned
+
+### how do the private vs federal units differ in terms of potential confounders?
+dat %>%
+  pivot_longer(!state:prot_cat_recl,
+               names_to = "covars",
+               values_to = "value") %>%
+  # filter(covars %in% c("elev_km", "prev_yr_precip")) %>%
+  ggplot(aes(x = value, 
+             color = prot_cat_recl,
+             fill = prot_cat_recl,
+             alpha = 0.3)) +
+  geom_density() +
+  facet_wrap(~ covars,
+             scales = "free",
+             nrow = 8)
 ```
 
-## Check out the full, unmatched dataset
-You might want to make the prot_cat_recl variable a factor.
-```{r}
-### See how many treated (federal) and control (private) sample points we have
+## Run naive regression
+We could just run a naive regression, ignoring the potential impact of confounders. There are some highly correlated covariates in the model, but let's ignore them for now. Let's see what that would yield:
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
+### fit model
+fit_naive <- glm(burned ~ prot_cat_recl +
+                     dist_rds_km +
+                   slope +
+                   aspect_srai +
+                   elev_km +
+                   pdsi_avg_winter + pdsi_avg_spring +
+                   pdsi_avg_summer + pdsi_avg_fall +
+                   soil_avg_winter + soil_avg_spring +
+                   soil_avg_summer + soil_avg_fall +
+                   tmmn_avg_winter + tmmn_avg_spring +
+                   tmmn_avg_summer + tmmn_avg_fall +
+                   tmmx_avg_winter + tmmx_avg_spring +
+                   tmmx_avg_summer + tmmx_avg_fall +
+                   vs_max_winter + vs_max_spring +
+                   vs_max_summer + vs_max_fall +
+                   total_precip_winter + total_precip_spring +
+                   total_precip_summer + total_precip_fall +
+                   prev_yr_precip,
+                     data = dat,
+                   family = binomial(link = "logit"))
 
-
-### You can take a look at the balance of the covariates before matching via data visualizations (boxplots, histograms, density plots)
-
-
-### You can also look at it in table form
-
-
+### extract coefficients
+naive_summary <- summary(fit_naive)
+naive_coeff <- as.data.frame(naive_summary$coefficients)
+naive_coeff <- naive_coeff %>% rownames_to_column()
 ```
 
 ## Match the data  
 Match the data on the observed covariates, using the MatchIt package. You can play around with the settings to see how it affects the matched data you end up with. 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Match the data 
+matched_dat <- matchit(prot_cat_recl ~ elev_km + 
+                         slope + aspect_srai +
+                         lon + lat +
+                         dist_rds_km + prev_yr_precip +
+                         vs_max_fall + vs_max_winter +
+                         vs_max_spring + vs_max_summer +
+                         total_precip_fall + 
+                         total_precip_winter +
+                         total_precip_spring + 
+                         total_precip_summer +
+                         tmmx_avg_fall + tmmx_avg_winter +
+                         tmmx_avg_spring + tmmx_avg_summer +
+                         tmmn_avg_fall + tmmn_avg_winter +
+                         tmmn_avg_spring + tmmn_avg_summer +
+                         pdsi_avg_fall + pdsi_avg_winter +
+                         pdsi_avg_spring + pdsi_avg_summer +
+                         soil_avg_fall + soil_avg_winter + 
+                         soil_avg_spring + soil_avg_summer,
+                       method = "nearest", 
+                       data = dat, 
+                       distance = "probit",
+                       caliper = 0.10,  
+                       m.order = "random")
 
-
+### summarize
+match_qual <- summary(matched_dat, standardize = TRUE)
 ```
 
 #### Assess match quality
 Take a look at the quality of the matches: how many points were matched? what was the pre-matching covariate balance? what was the covariate balance after matching?
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
+### look at the standardized mean differences 
+match_summary <- as.data.frame(match_qual$sum.matched)
+range(match_summary$`Std. Mean Diff.`)
 
-```
+### plot
+plot(match_qual)
 
-#### Visualize the match quality
-```{r}
 ### Some easy visualizations through MatchiIt
 # plot(match, interactive = FALSE)
 # plot(match, type = "jitter", interactive = FALSE)
-```
-
-#### Iterate, if necessary
-If you're satisfied with the quality of your matches, you can move on to the analysis. Otherwise, try tweaking the parameters to see what happens.
-```{r}
-
 ```
 
 ## Analyze the matched dataset
 ### Extract the matched data
 First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that (you'll likely need to modify this)
 ```{r}
-# ### Extract the matches from the MatchIt object
-# matched <- match.data(match)
-# 
-# ### Open the full data (entire time series) 
-# full_data <- read.csv("file_path/colo_dat_full.csv")
-# 
-# ### Filter full_data to just include the UIDs of the matched subset of the data
-# full_data <- full_data %>%
-#   filter(UID %in% matched$UID)
+### Extract the matches from the MatchIt object
+matched_units <- match.data(matched_dat)
+
+### Filter full_data to just include the UIDs of the matched subset of the data
+dat_matched <- dat %>%
+  filter(UID %in% matched_units$UID)
 ```
 
-### Add time lag variables
-In my analyses, I used time lag variables to account for recent fire history: if a site burned last year, it usually won't burn this year. So we'll make a variable that accounts for whether or not a site burned in the previous five years. 
-
-Since we used a lag variable, we won't have complete data for the first few years of the time series, so we'll also filter the dataset to just include the years with complete data.
+### Model the effect of ownership/management on wildfire probability
+Again, there are correlated covariates, but let's just ignore them
 ```{r}
-# ### Add lag variable
-# full_data <- full_data %>%
-#   
-#   ### Group by the UID so you can make a site-specific lag variable
-#   group_by(UID) %>%
-#   
-#   ### Add the lag variable
-#   mutate(burn_prev_5_yr = dplyr::lag(burned, 
-#                                      n = 5, 
-#                                      default = NA,
-#                                      order_by = year)) %>%
-#   ungroup()
-# 
-# ### Drop first years of time series
-# full_data <- full_data %>%
-#   filter(year > 1988)
+### fit model
+fit_matched <- glm(burned ~ prot_cat_recl +
+                     dist_rds_km +
+                     slope +
+                     aspect_srai +
+                     elev_km +
+                     pdsi_avg_winter + pdsi_avg_spring +
+                     pdsi_avg_summer + pdsi_avg_fall +
+                     soil_avg_winter + soil_avg_spring +
+                     soil_avg_summer + soil_avg_fall +
+                     tmmn_avg_winter + tmmn_avg_spring +
+                     tmmn_avg_summer + tmmn_avg_fall +
+                     tmmx_avg_winter + tmmx_avg_spring +
+                     tmmx_avg_summer + tmmx_avg_fall +
+                     vs_max_winter + vs_max_spring +
+                     vs_max_summer + vs_max_fall +
+                     total_precip_winter + total_precip_spring +
+                     total_precip_summer + total_precip_fall +
+                     prev_yr_precip,
+                   data = dat_matched,
+                   family = binomial(link = "logit"))
+
+### extract coefficients
+matched_summary <- summary(fit_matched)
+matched_coeff <- as.data.frame(matched_summary$coefficients)
+matched_coeff <- matched_coeff %>% rownames_to_column()
+
 ```
 
-### Check for correlated variables
-Some of the continuous variables are highly correlated, so we don't want to include them in the regression model.
+## background code (just for me)
+### make data set for regression
 ```{r}
-### Assess level of correlation
+### open full dataset
+full_data <- read_csv("colo_dat_full.csv")
 
-### if you want to use it, here's a function that returns a table with the correlation coefficient and p-value between each pair of variables:
-# cor.prob <- function (X, dfr = nrow(X) - 2) {
-#   R <- cor(X, use="pairwise.complete.obs")
-#   above <- row(R) < col(R)
-#   r2 <- R[above]^2
-#   Fstat <- r2 * dfr/(1 - r2)
-#   R[above] <- 1 - pf(Fstat, 1, dfr)
-#   R[row(R) == col(R)] <- NA
-#   R
-# }
-# flattenSquareMatrix <- function(m) {
-#   if( (class(m) != "matrix") | (nrow(m) != ncol(m))) stop("Must be a square matrix.") 
-#   if(!identical(rownames(m), colnames(m))) stop("Row and column names must be equal.")
-#   ut <- upper.tri(m)
-#   data.frame(i = rownames(m)[row(m)[ut]],
-#              j = rownames(m)[col(m)[ut]],
-#              cor=t(m)[ut],
-#              p=m[ut])
-# }
+### number of uids
+length(unique(full_data$UID)) ### 83532
 
-### Determine which variables to drop
-```
+### figure out number of burned per year
+annual_burned <- full_data %>%
+  group_by(year, prot_cat_recl) %>%
+  summarise(num_burned = sum(burned))
 
-### Model the effect of ownership/management on wildfire probability for a given site in a given year
-This is the exciting part! Here's a basic logistic regression model, but feel free to tweak it.
-```{r}
-# ### Model
-# colo_model <- glmer(burned ~ # covariates you're including + 
-#                       
-#                       ### include an interaction between year and ownership 
-#                       ### don't forget to tell R that prot_cat_recl is a factor
-#                       prot_cat_recl*year + 
-#                       
-#                       ### add the lag variable
-#                       burn_prev_5_yr +
-#                       
-#                       ### and a site-level effect to account for unobservable 
-#                       ### factors unique to each site
-#                       (1|UID),
-#                     
-#                     ### tell it where to get the data from
-#                     data = full_data, 
-#                     
-#                     ### model parameters
-#                     family = binomial(link = "logit"),
-#                     nAGQ = 0,
-#                     control = glmerControl(optimizer = "nloptwrap"))
+### visualize
+annual_burned %>%
+  ggplot() +
+  geom_bar(aes(x = year, 
+               y = num_burned, 
+               color = prot_cat_recl,
+               fill = prot_cat_recl),
+           stat = "identity")
 
-### Extract the model's coefficient estimates
+### subset data to 2002
+data_2002 <- full_data %>%
+  filter(year == 2002)
 
+### remove rows with NA in slope
+data_2002 <- data_2002 %>%
+  filter(!is.na(slope))
+
+### get rid of lightning because it's full of NAs
+data_2002 <- data_2002 %>%
+  dplyr::select(-lightning)
+
+### write out
+write_csv(data_2002, "matching_ipw_data_full.csv")
 ```
 
