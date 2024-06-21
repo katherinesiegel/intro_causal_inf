@@ -228,7 +228,7 @@ plot(match_qual)
 ### Analyze the matched dataset
 #### Extract the matched data
 First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that (you'll likely need to modify this)
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Extract the matches from the MatchIt object
 matched_units <- match.data(matched_dat)
 
@@ -239,7 +239,7 @@ dat_matched <- dat %>%
 
 #### Model the effect of ownership/management on wildfire probability
 Again, there are correlated covariates, but let's just ignore them
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### fit model
 fit_matched <- glm(burned ~ prot_cat_recl +
                      dist_rds_km +
@@ -272,10 +272,75 @@ matched_coeff <- matched_coeff %>% rownames_to_column()
 ## Use weighting to overcome issues with observed confounding variables
 
 ### Weight the data 
+Use the package ipw
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+### for the ipw package, the exposure needs to be numeric, not a factor
+dat_weight <- dat %>%
+  mutate(prot_cat_recl = as.numeric(prot_cat_recl) - 1)
 
+### convert to dataframe
+dat_weight <- dat_weight %>%
+  as.data.frame()
 
+### Generate weights
+weights_ipwpoint <- ipwpoint(exposure = prot_cat_recl,
+                             family = "binomial",  
+                             link = "logit",
+                             denominator = ~ elev_km + 
+                               slope + aspect_srai +
+                               lon + lat +
+                               dist_rds_km + prev_yr_precip +
+                               vs_max_fall + vs_max_winter +
+                               vs_max_spring + vs_max_summer +
+                               total_precip_fall + 
+                               total_precip_winter +
+                               total_precip_spring + 
+                               total_precip_summer +
+                               tmmx_avg_fall + tmmx_avg_winter +
+                               tmmx_avg_spring + tmmx_avg_summer +
+                               tmmn_avg_fall + tmmn_avg_winter +
+                               tmmn_avg_spring + tmmn_avg_summer +
+                               pdsi_avg_fall + pdsi_avg_winter +
+                               pdsi_avg_spring + pdsi_avg_summer +
+                               soil_avg_fall + soil_avg_winter + 
+                               soil_avg_spring + soil_avg_summer,
+                             data = dat_weight)
 
+### add weights to dataset
+data_ipw <- dat %>%
+  mutate(ipw = weights_ipwpoint$ipw.weights)
+```
 
+### Model the effect of ownership
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+### estimate average treatment effect
+model_ipw <- glm(burned ~ prot_cat_recl +
+                   dist_rds_km +
+                   slope +
+                   aspect_srai +
+                   elev_km +
+                   pdsi_avg_winter + pdsi_avg_spring +
+                   pdsi_avg_summer + pdsi_avg_fall +
+                   soil_avg_winter + soil_avg_spring +
+                   soil_avg_summer + soil_avg_fall +
+                   tmmn_avg_winter + tmmn_avg_spring +
+                   tmmn_avg_summer + tmmn_avg_fall +
+                   tmmx_avg_winter + tmmx_avg_spring +
+                   tmmx_avg_summer + tmmx_avg_fall +
+                   vs_max_winter + vs_max_spring +
+                   vs_max_summer + vs_max_fall +
+                   total_precip_winter + total_precip_spring +
+                   total_precip_summer + total_precip_fall +
+                   prev_yr_precip,
+                 data = data_ipw,
+                 weights = ipw,
+                 family = binomial(link = "logit"))
+
+### extract coefficients
+weighted_summary <- summary(model_ipw)
+weighted_coeff <- as.data.frame(weighted_summary$coefficients)
+weighted_coeff <- weighted_coeff %>% rownames_to_column()
+```
 
 ## background code (just for me)
 ### make data set for regression
