@@ -176,7 +176,9 @@ naive_coeff <- as.data.frame(naive_summary$coefficients)
 naive_coeff <- naive_coeff %>% rownames_to_column()
 ```
 
-## Match the data  
+## Use matching to overcome issues with observed confounding variables
+
+### Match the data  
 Match the data on the observed covariates, using the MatchIt package. You can play around with the settings to see how it affects the matched data you end up with. 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Match the data 
@@ -223,8 +225,8 @@ plot(match_qual)
 # plot(match, type = "jitter", interactive = FALSE)
 ```
 
-## Analyze the matched dataset
-### Extract the matched data
+### Analyze the matched dataset
+#### Extract the matched data
 First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that (you'll likely need to modify this)
 ```{r}
 ### Extract the matches from the MatchIt object
@@ -235,7 +237,7 @@ dat_matched <- dat %>%
   filter(UID %in% matched_units$UID)
 ```
 
-### Model the effect of ownership/management on wildfire probability
+#### Model the effect of ownership/management on wildfire probability
 Again, there are correlated covariates, but let's just ignore them
 ```{r}
 ### fit model
@@ -266,6 +268,14 @@ matched_coeff <- as.data.frame(matched_summary$coefficients)
 matched_coeff <- matched_coeff %>% rownames_to_column()
 
 ```
+
+## Use weighting to overcome issues with observed confounding variables
+
+### Weight the data 
+
+
+
+
 
 ## background code (just for me)
 ### make data set for regression
