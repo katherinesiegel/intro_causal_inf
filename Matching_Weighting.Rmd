@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### load libraries
 library(tidyverse) ## for basic coding
+library(knitr) ## for rmarkdown
 library(sf) ## for dealing with shapefiles
 library(ggdag) ## for making a directed acyclic graph (DAG)
 library(MatchIt) ## for matching
@@ -102,16 +103,18 @@ dat <- dat %>%
 ### What's the breakdown of private (value = 0) vs. federal (value = 1) units? 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### what's the breakdown of private vs. federal sample units? 
-table(dat$prot_cat_recl) ## 22,878 private units and 60,654 federal units
+kable(table(dat$prot_cat_recl),
+      caption = "Units on federal (=1) and private (=0) land") 
 ```
 
 ### What's the breakdown of units that burned (value = 1) in 2002 vs. units that did not burn (value = 0)?
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
-table(dat$burned) ## 82190 did not burn, while 1342 burned
+kable(table(dat$burned),
+      caption = "Units that burned (=1) or did not burn (=0) in 2002") ## 82190 did not burn, while 1342 burned
 ```
 
 ### How do the private (in red) vs federal (in blue) units differ in terms of potential confounders?
-```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12, fig.width = 10}
 dat %>%
   pivot_longer(!state:prot_cat_recl,
                names_to = "covars",
@@ -170,7 +173,8 @@ naive_coeff_round <- naive_coeff %>%
          `Std. Error` = round(`Std. Error`, 3),
          `p value` = round(`p value`, 3))
 
-naive_coeff_round
+kable(naive_coeff_round,
+      caption = "Coefficient estimates for naive model")
 ```
 
 ## Use matching to overcome issues with observed confounding variables
@@ -210,7 +214,8 @@ match_qual <- summary(matched_dat, standardize = TRUE)
 #### Assess match quality
 Take a look at the quality of the matches: how many units were matched? Control = private units, Treated = federal units
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
-match_qual$nn
+kable(match_qual$nn,
+      caption = "Breakdown of matched and unmatched units")
 ```
 
 What are the covariate means in the matched dataset for the treated (federal) and control (private) units? What was the covariate balance after matching? 
@@ -218,12 +223,16 @@ What are the covariate means in the matched dataset for the treated (federal) an
 ### look at the standardized mean differences 
 match_summary <- as.data.frame(match_qual$sum.matched)
 
-match_summary %>%
-  dplyr::select(`Means Treated`,
-                `Means Control`,
-                `Standardized Mean Difference` = `Std. Mean Diff.`)
+kable(match_summary %>%
+        dplyr::select(`Means Treated`,
+                      `Means Control`,
+                      `Standardized Mean Difference` = `Std. Mean Diff.`),
+      caption = "Covariate balance of matched dataset")
 # range(match_summary$`Std. Mean Diff.`)
+```
 
+Comparison of standardized mean differences in the covariate values in the full vs. matched dataset
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
 ### plot
 plot(match_qual)
 
@@ -234,7 +243,7 @@ plot(match_qual)
 
 ### Analyze the matched dataset
 #### Extract the matched data
-First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that
+First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Extract the matches from the MatchIt object
 matched_units <- match.data(matched_dat)
@@ -284,7 +293,8 @@ matched_coeff_round <- matched_coeff %>%
          `Std. Error` = round(`Std. Error`, 3),
          `p value` = round(`p value`, 3))
 
-matched_coeff_round
+kable(matched_coeff_round,
+      caption = "Coefficient estimates for model with matching")
 ```
 
 ## Use weighting to overcome issues with observed confounding variables
@@ -383,7 +393,8 @@ weighted_coeff_round <- weighted_coeff %>%
          `Std. Error` = round(`Std. Error`, 3),
          `p value` = round(`p value`, 3))
 
-weighted_coeff_round
+kable(weighted_coeff_round,
+      caption = "Coefficient estimates for model with weighting")
 ```
 
 ## Compare outputs from the naive, matched, and weighted regressions
