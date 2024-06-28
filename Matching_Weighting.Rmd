@@ -2,15 +2,14 @@
 title: "Tutorial on propensity score matching and inverse probability of treatment weighting"
 author: "Katherine Siegel and Laura Dee"
 date: "2024-06-17"
-output: html_document
+output: pdf_document
 ---
 
 ## Description
-- tutorial for using propensity score matching and inverse probability of treatment weighting
-- uses some of the data from Siegel et al. 2022 (https://doi.org/10.1007/s10113-022-01950-y). The dataset for the entire western US is very large and unwieldy, so you'll work with data from a single state: Colorado. 
+This tutorial demonstrates how to use propensity score matching and inverse probability of treatment weighting using a real dataset from [Siegel et al. 2022](https://doi.org/10.1007/s10113-022-01950-y). The dataset for the entire western US is very large and unwieldy, so you'll work with a subset of data for a single year in Colorado. 
 
 ## Set up
-Load the packages used for data manipulation (tidyverse, sf), making a directed acyclic graph (ggdag), matching (MatchIt), weighting (WeightIt and ipw), and regression models (lme4).
+Load the packages used for data manipulation (tidyverse, sf), making a directed acyclic graph (ggdag), matching (MatchIt), weighting (ipw), and regression models (lme4).
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -19,17 +18,20 @@ library(tidyverse) ## for basic coding
 library(sf) ## for dealing with shapefiles
 library(ggdag) ## for making a directed acyclic graph (DAG)
 library(MatchIt) ## for matching
-library(WeightIt) ## for weighting
 library(ipw) ## for weighting
 library(lme4) ## for regression models after matching/weighting
+
+### get rid of scientific notation
+options(scipen = 999)
 ```
 
 ## The context
 The Siegel et al. 2022 study examines the effect of forest management (through the proxy of land ownership) on annual burn probability in forests of the western US. Specifically, it looks at the effect of federal (treatment) vs. private (control) ownership on wildfire occurrence in sample units.
 
 ### Directed acyclic graph
-Here's a DAG for the research question:
-```{r echo = FALSE, message = FALSE, warning = FALSE}
+Here's a DAG for the research question:  
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 10}
 ### make dag
 fire_dag <- dagify(burn_prob ~ land_own + confound_covar,
                    land_own ~ confound_covar,
@@ -60,53 +62,28 @@ ggdag_status(fire_dag,
 
 
 ## The data
-There are two data files you can play around with for this exercise: *colo_dat_full.csv* and *colo_data_for_matching.csv*. *colo_dat_full.csv* has the entire time series of data for the full (unmatched) dataset of federal and private forests in Colorado. *colo_data_for_matching.csv* is a file that's ready for the matching process without additional pre-processing: it has a row for each sample point in Colorado and five-year averages for the climate variables. 
+The data are in the file *matching_ipw_data_full.csv.*
 
-### Variable names in colo_dat_full  
+### Variable names   
 
-* state: the state the sample is from (it should always be Colorado in this file)  
-* UID: a unique identifier for each sample point  
-* year: the year that the fire and climate data is from  
-* burned: whether or not the site burned in that year (0 = unburned, 1 = burned)  
+* state: the state the sample unit is from (Colorado)  
+* UID: a unique identifier for each sample unit  
+* year: the year that the fire and climate data is from (2002)   
+* burned: whether or not the unit burned in 2002 (0 = unburned, 1 = burned)  
 * prot_cat_recl: the ownership class. 0 = private, 1 = federal  
-* dist_rds_km: distance to the nearest road, in km  
+* dist_rds_km: distance to the nearest road, in kiometers  
 * slope: slope, in degrees  
-* aspect_srai: aspect  
+* aspect_srai: solar radiation aspect index     
 * elev_km: elevation, in 1000 m  
 * lon: longitude  
 * lat: latitude  
-* lightning: county-level lightning strikes    
-* pdsi_avg_season: seasonal average Palmer Drought Severity Index value  
-* soil_avg_season: seasonal average soil moisture  
-* tmmn_avg_season: seasonal average minimum temperature
-* tmmx_avg_season: seasonal average maximum temperature  
-* vs_max_season: seasonal average maximum wind speed  
-* total_precip_season: total seasonal precipitation    
+* pdsi_avg_season: seasonal average Palmer Drought Severity Index value (fall, spring, summer, winter)  
+* soil_avg_season: seasonal average soil moisture (fall, spring, summer, winter)  
+* tmmn_avg_season: seasonal average minimum temperature (fall, spring, summer, winter)
+* tmmx_avg_season: seasonal average maximum temperature (fall, spring, summer, winter)  
+* vs_max_season: seasonal average maximum wind speed (fall, spring, summer, winter)  
+* total_precip_season: total seasonal precipitation (fall, spring, summer, winter)    
 * prev_yr_precip: total precipitation in the previous year
-
-### Variable names in colo_data_for_matching  
-
-All the climate variables are variablename_5 to indicate that they are 5-year average values
-* UID: a unique identifier for each sample point  
-* state: the state the sample is from  
-* prot_cat_recl: the ownership class. 0 = private, 1 = federal  
-* lightning_5: 5 year average for lightning strikes  
-* vs_max_season: seasonal average maximum wind speed  
-* pr_total_season: total seasonal precipitation    
-* tmmx_avg_season: seasonal average maximum temperature  
-* tmmn_avg_season: seasonal average minimum temperature
-* pdsi_avg_season: seasonal average Palmer Drought Severity Index value  
-* soil_avg_season: seasonal average soil moisture  
-* slope: slope, in degrees  
-* aspect_srai: aspect  
-* elev_km: elevation, in 1000 m  
-* lon: longitude  
-* lat: latitude  
-* dist_rds_km: distance to the nearest road, in km  
-* popdens_1990: population density (per km2) in 1990  
-* popdens_2000: population density (per km2) in 2000  
-* popdens_2010: population density (per km2) in 2010  
-
 
 ## Data exploration
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
@@ -120,16 +97,21 @@ dat <- dat %>%
                  burned,
                  prot_cat_recl),
             factor)
+```
 
-### basic data exploration
-
+### What's the breakdown of private (value = 0) vs. federal (value = 1) units? 
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### what's the breakdown of private vs. federal sample units? 
 table(dat$prot_cat_recl) ## 22,878 private units and 60,654 federal units
+```
 
-### what's the breakdown of sample units that burned in 2002?
+### What's the breakdown of units that burned (value = 1) in 2002 vs. units that did not burn (value = 0)?
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 table(dat$burned) ## 82190 did not burn, while 1342 burned
+```
 
-### how do the private vs federal units differ in terms of potential confounders?
+### How do the private (in red) vs federal (in blue) units differ in terms of potential confounders?
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
 dat %>%
   pivot_longer(!state:prot_cat_recl,
                names_to = "covars",
@@ -142,7 +124,10 @@ dat %>%
   geom_density() +
   facet_wrap(~ covars,
              scales = "free",
-             nrow = 8)
+             nrow = 8) + 
+  theme(legend.position = "none") +
+  xlab("Value") +
+  ylab("Density")
 ```
 
 ## Run naive regression
@@ -174,12 +159,24 @@ fit_naive <- glm(burned ~ prot_cat_recl +
 naive_summary <- summary(fit_naive)
 naive_coeff <- as.data.frame(naive_summary$coefficients)
 naive_coeff <- naive_coeff %>% rownames_to_column()
+
+### round for ease of presentation
+naive_coeff_round <- naive_coeff %>%
+  dplyr::select(Variable = rowname, 
+                Estimate,
+                `Std. Error`,
+                `p value` = `Pr(>|z|)`) %>%
+  mutate(Estimate = round(Estimate, 3),
+         `Std. Error` = round(`Std. Error`, 3),
+         `p value` = round(`p value`, 3))
+
+naive_coeff_round
 ```
 
 ## Use matching to overcome issues with observed confounding variables
 
 ### Match the data  
-Match the data on the observed covariates, using the MatchIt package. You can play around with the settings to see how it affects the matched data you end up with. 
+Match the data on the observable covariates, using the MatchIt package. You can play around with the settings to see how it affects the matched data you end up with. 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Match the data 
 matched_dat <- matchit(prot_cat_recl ~ elev_km + 
@@ -211,11 +208,21 @@ match_qual <- summary(matched_dat, standardize = TRUE)
 ```
 
 #### Assess match quality
-Take a look at the quality of the matches: how many points were matched? what was the pre-matching covariate balance? what was the covariate balance after matching?
+Take a look at the quality of the matches: how many units were matched? Control = private units, Treated = federal units
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
+match_qual$nn
+```
+
+What are the covariate means in the matched dataset for the treated (federal) and control (private) units? What was the covariate balance after matching? 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
 ### look at the standardized mean differences 
 match_summary <- as.data.frame(match_qual$sum.matched)
-range(match_summary$`Std. Mean Diff.`)
+
+match_summary %>%
+  dplyr::select(`Means Treated`,
+                `Means Control`,
+                `Standardized Mean Difference` = `Std. Mean Diff.`)
+# range(match_summary$`Std. Mean Diff.`)
 
 ### plot
 plot(match_qual)
@@ -227,7 +234,7 @@ plot(match_qual)
 
 ### Analyze the matched dataset
 #### Extract the matched data
-First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that (you'll likely need to modify this)
+First, you'll need to extract the matched data and use the UIDs from the matched data to subset the full dataset for analysis. Here is some code to demonstrate that
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Extract the matches from the MatchIt object
 matched_units <- match.data(matched_dat)
@@ -267,6 +274,17 @@ matched_summary <- summary(fit_matched)
 matched_coeff <- as.data.frame(matched_summary$coefficients)
 matched_coeff <- matched_coeff %>% rownames_to_column()
 
+### round for ease of presentation
+matched_coeff_round <- matched_coeff %>%
+  dplyr::select(Variable = rowname, 
+                Estimate,
+                `Std. Error`,
+                `p value` = `Pr(>|z|)`) %>%
+  mutate(Estimate = round(Estimate, 3),
+         `Std. Error` = round(`Std. Error`, 3),
+         `p value` = round(`p value`, 3))
+
+matched_coeff_round
 ```
 
 ## Use weighting to overcome issues with observed confounding variables
@@ -305,10 +323,24 @@ weights_ipwpoint <- ipwpoint(exposure = prot_cat_recl,
                                soil_avg_fall + soil_avg_winter + 
                                soil_avg_spring + soil_avg_summer,
                              data = dat_weight)
+```
 
+#### What's the range of weights?
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### add weights to dataset
 data_ipw <- dat %>%
   mutate(ipw = weights_ipwpoint$ipw.weights)
+
+### print weights
+range(data_ipw$ipw)
+
+### plot
+ipwplot(data_ipw$ipw, 
+        logscale = TRUE,
+        xlab = "Weight (log scale)",
+        ylab = "Density",
+        main = "", 
+        ref = FALSE)
 ```
 
 ### Model the effect of ownership
@@ -340,17 +372,29 @@ model_ipw <- glm(burned ~ prot_cat_recl +
 weighted_summary <- summary(model_ipw)
 weighted_coeff <- as.data.frame(weighted_summary$coefficients)
 weighted_coeff <- weighted_coeff %>% rownames_to_column()
+
+### round for ease of presentation
+weighted_coeff_round <- weighted_coeff %>%
+  dplyr::select(Variable = rowname, 
+                Estimate,
+                `Std. Error`,
+                `p value` = `Pr(>|z|)`) %>%
+  mutate(Estimate = round(Estimate, 3),
+         `Std. Error` = round(`Std. Error`, 3),
+         `p value` = round(`p value`, 3))
+
+weighted_coeff_round
 ```
 
-## Compare outputs
-```{r}
+## Compare outputs from the naive, matched, and weighted regressions
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### add identifying column for coefficient tables
 naive_coeff <- naive_coeff %>%
-  mutate(model = "naive")
+  mutate(model = "Naive")
 matched_coeff <- matched_coeff %>%
-  mutate(model = "matched")
+  mutate(model = "Matched")
 weighted_coeff <- weighted_coeff %>%
-  mutate(model = "weighted")
+  mutate(model = "Weighted")
 
 ### combine 
 all_coeff <- rbind(naive_coeff,
@@ -375,49 +419,9 @@ all_coeff %>%
                     ymax = estimate + std_error,
                     x = model),
                 width = .1) +
-  scale_x_discrete(limits = c('naive', 'matched', 
-                     'weighted')) +
+  scale_x_discrete(limits = c('Naive', 'Matched', 
+                     'Weighted')) +
+  xlab("Model") +
+  ylab("Estimated treatment effect")
   theme_bw()
 ```
-
-
-
-## background code (just for me)
-### make data set for regression
-```{r}
-### open full dataset
-full_data <- read_csv("colo_dat_full.csv")
-
-### number of uids
-length(unique(full_data$UID)) ### 83532
-
-### figure out number of burned per year
-annual_burned <- full_data %>%
-  group_by(year, prot_cat_recl) %>%
-  summarise(num_burned = sum(burned))
-
-### visualize
-annual_burned %>%
-  ggplot() +
-  geom_bar(aes(x = year, 
-               y = num_burned, 
-               color = prot_cat_recl,
-               fill = prot_cat_recl),
-           stat = "identity")
-
-### subset data to 2002
-data_2002 <- full_data %>%
-  filter(year == 2002)
-
-### remove rows with NA in slope
-data_2002 <- data_2002 %>%
-  filter(!is.na(slope))
-
-### get rid of lightning because it's full of NAs
-data_2002 <- data_2002 %>%
-  dplyr::select(-lightning)
-
-### write out
-write_csv(data_2002, "matching_ipw_data_full.csv")
-```
-
