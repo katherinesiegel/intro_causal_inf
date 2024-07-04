@@ -68,7 +68,7 @@ comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]
 The *comb* dataset contains a wide number of variables; we'll mainly be using the variables *live_mass* and *rich*. Also important are the *site_code*, *plot*, and *year* variables, which we use to create fixed effects (site-by-year fixed were created with this line of code: `"r comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]"`).
 
 
-## Simple correlations in single years
+# Simple correlations in single years
 
 Let's begin by looking at simple correlations that do not account for any confounding variables. We will examine both the overall correlation and correlations within a single year (i.e., using cross-sectional variation). We proceed with a linear regression framework \@ref(eq:eq1), using the log of productivity (measured as live aboveground biomass) as the outcome and the log species richness as the explanatory variable.  We've found that a log-log specification captures the nature of the relationship in our data well (see Figure \@ref(fig:graphbiomasssp) below and the paper for details).
 
@@ -129,7 +129,7 @@ In our case, many variables that are correlated with biodiversity can also drive
 
 Figure 1, which is Figure 1B in *add in DEE CITATION*. 
 
-## Multivariate Regression that adjusts for confounding variables
+# Multivariate Regression that adjusts for confounding variables
 
 Of course, in the above correlations, we include plots in sites from across the world, implicitly comparing grasslands in warmer climates with those in cooler ones, or wetter with dryer, or Europe with the Americas. There are a lot of differences between these places! A common response to this problem is to try to measure these differences and include them in the model.
  
