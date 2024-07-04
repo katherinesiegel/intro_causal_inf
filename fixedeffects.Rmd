@@ -134,16 +134,16 @@ Figure 1, which is Figure 1B in *add in DEE CITATION*.
 ## Make DAG
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 10}
 ### make dag
-dee_dag <- dagify(productivity ~ richness + confounders,
+dee_dag <- dagify(productivity ~ mechanisms + confounders,
                   richness ~ confounders,
-                  # productivity ~ mechanisms + predictors + confounders,
-                  # mechanisms ~ richness,
+                  productivity ~ mechanisms + confounders,
+                  mechanisms ~ richness,
                    
                    ### label nodes
                    labels = c("productivity" = "Productivity",
                               "confounders" = "Confounding\n covariates",
                               # "predictors" = "Additional\n predictors",
-                              # "mechanisms" = "Mechanisms",
+                              "mechanisms" = "Mechanisms",
                               "richness" = "Richness"),
                    exposure = "richness",
                    outcome = "productivity",
@@ -151,10 +151,12 @@ dee_dag <- dagify(productivity ~ richness + confounders,
                    ### add coordinates
                    coords = list(x = c(richness = 1, 
                                        productivity = 3,
-                                       confounders = 2),
+                                       confounders = 2,
+                                       mechanisms = 2),
                                  y = c(richness = 1, 
                                        productivity = 1,
-                                       confounders = 2)))
+                                       confounders = 2,
+                                       mechanisms = 1)))
 
 ### plot dag
 ggdag_status(dee_dag,
