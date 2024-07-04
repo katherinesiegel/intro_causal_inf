@@ -33,14 +33,16 @@ link-citations: true
 : definition for rival explanation  -->
 
 # Description 
+*laura to add in what this tutorial is as it relates to the main text*
 
-# The context
+# Context
 
+*laura to update make this about the aim of the paper* 
 For causal inference, we aim to answer, *how much does a change in $X$ lead to a change in $Y$*. Causal inference involves ruling out [**rival explanations**](#rivalexplanations) for an estimated relationship. This aim and requirement differs from other research tasks (e.g., predicting where total productivity will be the highest, which can be done without knowing the true underlying causes of productivity).
 
 # Setup and Load Data
 
-The data used in this tutorial comes from the [Nutrient Network](https://nutnet.org/). It has been cleaned and processed and is ready to use, found on the [project release on Zenodo] (https://zenodo.org/records/7675340). The data correspond to what we use in the paper for the main analysis, and consists of control plots from 43 NutNet sites. Each site includes one or more control plots that we use. We only use plots for which we have at least 5 years of data. 
+The data used in this tutorial comes from the [Nutrient Network](https://nutnet.org/) or "NutNet". It has been cleaned and processed and is ready to use, found on the [project release on Zenodo] (https://zenodo.org/records/7675340). The data correspond to what we use in the paper for the main analysis, and consists of control plots from 43 NutNet sites. Each site includes one or more control plots that we use. Dee et al. (2023) *add in citation* only use plots for which we have at least 5 years of data. 
 
 We'll primarily use the *fixest* package for analysis; the other packages (*tidyverse*, *data.table*, *lme4*) aid data wrangling and comparing research designs.
 ```{r setup, message=FALSE, warning=FALSE}
@@ -63,13 +65,12 @@ comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]
 
 ```
 
-The *comb* dataset contains a wide number of variables; we'll mainly be using the variables *live_mass* and *rich*. Also important are the *site_code*, *plot*, and *year* variables, which we use to create fixed effects (site-by-year fixed were created with `"r comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]"`).
-
+The *comb* dataset contains a wide number of variables; we'll mainly be using the variables *live_mass* and *rich*. Also important are the *site_code*, *plot*, and *year* variables, which we use to create fixed effects (site-by-year fixed were created with this line of code: `"r comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]"`).
 
 
 ## Simple correlations in single years
 
-Let's begin by looking at simple correlations. We will examine both the overall correlation and correlations within a single year (i.e., using cross-sectional variation). We proceed with a linear regression framework \@ref(eq:eq1), using the log of productivity (measured as live aboveground biomass) as the outcome and the log species richness as the explanatory variable.  We've found that a log-log specification captures the nature of the relationship in our data well (see Figure \@ref(fig:graphbiomasssp) below and the paper for details).
+Let's begin by looking at simple correlations that do not account for any confounding variables. We will examine both the overall correlation and correlations within a single year (i.e., using cross-sectional variation). We proceed with a linear regression framework \@ref(eq:eq1), using the log of productivity (measured as live aboveground biomass) as the outcome and the log species richness as the explanatory variable.  We've found that a log-log specification captures the nature of the relationship in our data well (see Figure \@ref(fig:graphbiomasssp) below and the paper for details).
 
 ```{r graphbiomasssp, echo = F, out.width = '60%', fig.align = "center", fig.cap="log(Live Mass) as a function of log(Richness)."}
 ggplot(comb, aes(x=log(rich), y = log(live_mass))) + geom_point()
@@ -103,12 +104,19 @@ etable(SimpleCorrAll, SimpleCorr2012, SimpleCorr2013,
 
 As you can see, using all years of data gives a non-significant positive relationship between productivity and richness. In just the 2012 data, the coefficient is larger in magnitude, but still not significant. Finally, just using 2013 data, the coefficient switches signs and becomes significant. 
 
-So... which one to believe? Well, probably none of these, because they likely do not identify the true causal effect of richness on productivity. Their variability highlights that these estimates, which rely on non-experimental [**cross-sectional**](#crosssectional) data, are likely contaminated by omitted variable bias.
+So... which one to believe? Well, probably none of these, because they likely do not identify the true causal effect of richness on productivity without statistical bias. Their variability highlights that these estimates, which rely on non-experimental [**cross-sectional**](#crosssectional) data, are likely contaminated by omitted variable bias.
 
 When does $\hat{\beta}$ capture a causal relationship? When there are no unobservables that are correlated with richness that also influence productivity: $\mathbb{E}[e_{pst} \times \ln(\text{Richness}_{pst})]=0$ (i.e., $e_{pst}$ and $\ln(\text{Richness}_{pst})$ aren't correlated). In the above results, there's probably stuff in $e$ that is correlated with richness, like precipitation, disturbance, land-use history, soil characteristics, and other characteristics of sites and plots.
 
+<div style="background-color: #c5cae9">
+TAKEAWAY:
+
+Omitted variable bias is a pervasive feature in observational analysis, and the assumptions that permit identification of causal effects are unlikely to hold when using cross-sectional variation when we do not have all key confounding variable measured and included in regressions to control for their effects.
+</div>
+
 # Directed Acyclic Graph 
 A simplified [**Directed Acyclic Graph**](#dag) (DAG) can help us see the challenges of omitted, and potentially confounding, variables more clearly. In the above analyses from equation \@ref(eq:eq1), $\beta$ is only identified if we assume that any variables that matter but that we omitted are uncorrelated with richness. 
+
 One benefit of a DAG is that it makes transparent the assumptions on which one relies for making causal claims from observable data. A DAG therefore allows the researcher and the reader to better judge the credibility of the causal claims from a specific research design. Another way to view this benefit is that a causal graph helps identify the sources of variation in a causal variable and in its outcome, thereby emphasizing potential sources of bias that must be addressed in a research design and pointing to designs that can address these sources of [**statistical bias**](#bias) [@morganCounterfactualsCausalInference2014].
 
 In our case, many variables that are correlated with biodiversity can also drive productivity (detailed in [Dee et al. (2023)](https://www.nature.com/articles/s41467-023-37194-5)). For example, climatic conditions, soil nutrients, evolutionary history, and historic contingency during community assembly are all related to both productivity and biodiversity [@Loreau1998;@fukamiCommunityAssemblyAlternative2011;@graceIntegrativeModellingReveals2016]. When not accounted for, these confounding variables create the possibility for alternative explanations of estimated effects due to bias in the estimators.  With a common driver of both variables that is not included in a model, two variables (i.e., biodiversity and an ecosystem function) may be correlated, even when there is no causal relationship between them. Similarly, no correlation between variables does not imply a lack of causation. Causal relationships can also be masked when examining correlations, due to an omitted variable (e.g., nitrogen addition), which positively affects productivity but negatively affects richness [@isbellNutrientEnrichmentBiodiversity2013]. Models that do not control for that common driver will consequently tend to give estimates that do not correspond to causal effects of biodiversity on productivity (or *vice versa*). This type of bias is called omitted variable bias, reviewed at length in *add in BRYNES AND DEE CITATION*.
@@ -120,14 +128,6 @@ In our case, many variables that are correlated with biodiversity can also drive
 </center>   
 
 Figure 1, which is Figure 1B in *add in DEE CITATION*. 
-
-is a visualization of qualitative causal assumptions ([@pearl2009causality;  @pearl2011aspects]). A DAG encodes knowledge and beliefs about how a system works. The graphical relations depicted in the DAG encode causal claims – not just representations of associations. A directed edge (e.g., R --> P) depicts a claim about the results of many hypothetical experiments, whereby if every other variable represented in the graph is held fixed, R and P will covary if R if manipulated, but not if P is manipulated (note, a DAG assumes that one can isolate the effect of R on P, but does not imply that P can never affect R; another DAG may represent the reverse direction, P --> R). 
-
-<div style="background-color: #c5cae9">
-TAKEAWAY:
-
-Omitted variable bias is a pervasive feature in observational analysis, and the assumptions that permit identification of causal effects are unlikely to hold when using cross-sectional variation when we do not have all key confounding variable measured and included in regressions to control for their effects.
-</div>
 
 ## Multivariate Regression that adjusts for confounding variables
 
@@ -215,14 +215,13 @@ Where did $\lambda_p$ go? Well, $\lambda_p-\lambda_p=0$, so we don't need it. (N
 
 What do we have to assume for a causal interpretation? There are a couple of different assumptions we could choose; I think it's easiest to frame it like this: $\mathbb{E}[ (e_{pt} - e_{pt-1}) \times (\ln(\text{Richness}_{pt}) - \ln(\text{Richness}_{pt-1}))]=0$. That is, changes in richness are uncorrelated with *changes in* unobserved determinants of richness. Because time-invariant unobservable variables do not change, they are no longer a concern! Instead, we're concerned if movements in some unobserved factor could both be driving our outcome variable and be correlated with richness.
 
-
 What's the cost? Well, there are a few to consider, but some really aren't much of a restriction:
 
 1. We use to worry about computational issues. Instead of differencing, we could have including the additional fixed effects as regressors. Were this a large vector, computation could have become difficult. This is rarely a concern thanks to better computers and better techniques.
 
-2. We need longitudinal (panel) data (or repeated cross sections in some special circumstances). This is why economists get so much use out of administrative data! This data is rarer in ecology, but with the growth in LTERs and other multi-year sites, this will be less of a constraint.
+2. We need longitudinal (panel) data (or repeated cross sections in some special circumstances). This data is rarer but increasing in ecology, but with the growth in long-term ecological research sites, coordinated monitoring and experiments, this constraint will lessen.  
 
-3. Our target of interest has to be time-varying. Any interesting time-invariant factors have been removed from the equation (literally).
+3. Our target treatment of interest has vary through time. Any interesting time-invariant factors have been removed from the equation (literally).
 
 Figures \@ref(fig:graphrawvary) and \@ref(fig:graphdeplotFE) illustrate graphically what the plot fixed effects do to the outcome variable (productivity). Figures \@ref(fig:graphrawvary) is just the raw data, and shows log(live mass) in four plots split between two sites (at the Sedgwick Reserve [sedg.us] and at the Sevilleta LTER [sevi.us]). Sedgwick has higher productivity on average. The productivity at these sites also appear to be following different trajectories through time (e.g., note the dip in productivity at Sevilleta in 2009). The plot fixed effects remove the average productivity in each site, as shown in Figure \@ref(fig:graphdeplotFE). They do not remove site-and-year specific sources of confounding variation (e.g., if a more extreme drought happened at Sevilleta than at Sedgwick in 2009 affecting both productivity and richness); we turn to eliminating site and year specific confounding variables below in \@ref(fig:graphdeplotsiteyearFE).
 
