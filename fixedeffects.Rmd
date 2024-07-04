@@ -131,7 +131,8 @@ In our case, many variables that are correlated with biodiversity can also drive
 
 Figure 1, which is Figure 1B in *add in DEE CITATION*. 
 
-## Make DAG
+## Directed acyclic graph
+Here's a DAG for the research question: 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 10}
 ### make dag
 dee_dag <- dagify(productivity ~ mechanisms + confounders,
