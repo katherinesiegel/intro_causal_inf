@@ -32,10 +32,11 @@ link-citations: true
 
 : definition for rival explanation  -->
 
-## Description 
+# Description 
 
-## The context
+# The context
 
+For causal inference, we aim to answer, *how much does a change in $X$ lead to a change in $Y$*. Causal inference involves ruling out [**rival explanations**](#rivalexplanations) for an estimated relationship. This aim and requirement differs from other research tasks (e.g., predicting where total productivity will be the highest, which can be done without knowing the true underlying causes of productivity).
 
 # Setup and Load Data
 
@@ -64,12 +65,6 @@ comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]
 
 The *comb* dataset contains a wide number of variables; we'll mainly be using the variables *live_mass* and *rich*. Also important are the *site_code*, *plot*, and *year* variables, which we use to create fixed effects (site-by-year fixed were created with `"r comb[, site.by.yeardummy := paste(site_code, year, sep = "_")]"`).
 
-
-# Standard Approaches
-
-For causal inference, we aim to answer, *how much does a change in $X$ lead to a change in $Y$*. Causal inference involves ruling out [**rival explanations**](#rivalexplanations) for an estimated relationship. This aim and requirement differs from other research tasks (e.g., predicting where total productivity will be the highest, which can be done without knowing the true underlying causes of productivity). Thus, the criteria for evaluating causal inference differ from other task. For example, prediction or forecasting of rely on model fit measures, such as R-squared values or mean squared error [see @ferraroCausalInferenceCoupled2018]. 
-
-We evaluate causal inference by assessing the credibility and validity of the assumptions made by the research design for each dataset, system, and question [reviewed in @morganCounterfactualsCausalInference2014;@ferraroCausalInferenceCoupled2018], as we will illustrate next.  Being explicit about these assumptions and evaluating how reasonable they are is important for causal inference.
 
 
 ## Simple correlations in single years
@@ -112,7 +107,8 @@ So... which one to believe? Well, probably none of these, because they likely do
 
 When does $\hat{\beta}$ capture a causal relationship? When there are no unobservables that are correlated with richness that also influence productivity: $\mathbb{E}[e_{pst} \times \ln(\text{Richness}_{pst})]=0$ (i.e., $e_{pst}$ and $\ln(\text{Richness}_{pst})$ aren't correlated). In the above results, there's probably stuff in $e$ that is correlated with richness, like precipitation, disturbance, land-use history, soil characteristics, and other characteristics of sites and plots.
 
-A simplified [**Directed Acyclic Diagram**](#dag) (DAG) can help us see the challenges of omitted, and potentially confounding, variables more clearly. In the above analyses from equation \@ref(eq:eq1), $\beta$ is only identified if we assume that any variables that matter but that we omitted are uncorrelated with richness. 
+## Directed Acyclic Graph 
+A simplified [**Directed Acyclic Graph**](#dag) (DAG) can help us see the challenges of omitted, and potentially confounding, variables more clearly. In the above analyses from equation \@ref(eq:eq1), $\beta$ is only identified if we assume that any variables that matter but that we omitted are uncorrelated with richness. 
 One benefit of a DAG is that it makes transparent the assumptions on which one relies for making causal claims from observable data. A DAG therefore allows the researcher and the reader to better judge the credibility of the causal claims from a specific research design. Another way to view this benefit is that a causal graph helps identify the sources of variation in a causal variable and in its outcome, thereby emphasizing potential sources of bias that must be addressed in a research design and pointing to designs that can address these sources of [**statistical bias**](#bias) [@morganCounterfactualsCausalInference2014].
 
 In our case, many variables that are correlated with biodiversity can also drive productivity (detailed in [Dee et al. (2023)](https://www.nature.com/articles/s41467-023-37194-5)). For example, climatic conditions, soil nutrients, evolutionary history, and historic contingency during community assembly are all related to both productivity and biodiversity [@Loreau1998;@fukamiCommunityAssemblyAlternative2011;@graceIntegrativeModellingReveals2016]. When not accounted for, these confounding variables create the possibility for alternative explanations of estimated effects due to bias in the estimators.  With a common driver of both variables that is not included in a model, two variables (i.e., biodiversity and an ecosystem function) may be correlated, even when there is no causal relationship between them. Similarly, no correlation between variables does not imply a lack of causation. Causal relationships can also be masked when examining correlations, due to an omitted variable (e.g., nitrogen addition), which positively affects productivity but negatively affects richness [@isbellNutrientEnrichmentBiodiversity2013]. Models that do not control for that common driver will consequently tend to give estimates that do not correspond to causal effects of biodiversity on productivity (or *vice versa*). This type of bias is called omitted variable bias, reviewed at length in *add in BRYNES AND DEE CITATION*.
@@ -125,7 +121,7 @@ In our case, many variables that are correlated with biodiversity can also drive
 
 Figure 1, which is Figure 1B in *add in DEE CITATION*. 
 
-is a visualization of qualitative causal assumptions ([@pearl2009causality;  @pearl2011aspects;@fieberg2012understanding; @schoolmaster2013causal; @schoolmaster2020graphical; @Grace2020]). A DAG encodes knowledge and beliefs about how a system works. The graphical relations depicted in the DAG encode causal claims – not just representations of associations. A directed edge (e.g., R --> P) depicts a claim about the results of many hypothetical experiments, whereby if every other variable represented in the graph is held fixed, R and P will covary if R if manipulated, but not if P is manipulated (note, a DAG assumes that one can isolate the effect of R on P, but does not imply that P can never affect R; another DAG may represent the reverse direction, P --> R). 
+is a visualization of qualitative causal assumptions ([@pearl2009causality;  @pearl2011aspects]). A DAG encodes knowledge and beliefs about how a system works. The graphical relations depicted in the DAG encode causal claims – not just representations of associations. A directed edge (e.g., R --> P) depicts a claim about the results of many hypothetical experiments, whereby if every other variable represented in the graph is held fixed, R and P will covary if R if manipulated, but not if P is manipulated (note, a DAG assumes that one can isolate the effect of R on P, but does not imply that P can never affect R; another DAG may represent the reverse direction, P --> R). 
 
 <div style="background-color: #c5cae9">
 TAKEAWAY:
@@ -133,11 +129,12 @@ TAKEAWAY:
 Omitted variable bias is a pervasive feature in observational analysis, and the assumptions that permit identification of causal effects are unlikely to hold when using cross-sectional variation when we do not have all key confounding variable measured and included in regressions to control for their effects.
 </div>
 
-## Common Ecological Design - Multivariate Regression 
+## Multivariate Regression that adjusts for confounding variables
 
-Of course, in the above correlations, we include plots in sites from across the world, implicitly comparing grasslands in warmer climates with those in cooler ones, or wetter with dryer, or Europe with the Americas. There are a lot of differences between these places! 
+Of course, in the above correlations, we include plots in sites from across the world, implicitly comparing grasslands in warmer climates with those in cooler ones, or wetter with dryer, or Europe with the Americas. There are a lot of differences between these places! A common response to this problem is to try to measure these differences and include them in the model.
  
-A common response to this problem is to try to measure these differences and include them in the model.  In the causal inference literature, this is known as [**“conditioning on observables”**](#conditioning) or Pearl’s [**back-door criteria**](#conditioning). Conditioning on observables is convenient but makes strong assumptions for causal inference, namely the [**“Selection on Observables” Assumption.**](#selectionobserv) Informally, this assumption implies that confounding variables that could introduce bias into a design are known and observable to the researcher. The bias they introduce into an estimator can be eliminated (controlled, blocked) by conditioning strategies, such as regression, matching, or stratification methods. To read more, see [@morganCounterfactualsCausalInference2014]. We can visualize this assumption by modifying our DAG, and using some examples in R:
+More generally, a common statistical design in ecology is to measure and control for confounding variables in multivariate regression.
+In the causal inference literature, this is known as [**“conditioning on observables”**](#conditioning)  or Pearl’s [**back-door criteria**](#conditioning). Conditioning on observables is convenient but makes strong assumptions for causal inference, namely the [**“Selection on Observables” Assumption.**](#selectionobserv) Informally, this assumption implies that confounding variables that could introduce bias into a design are known and observable to the researcher. The bias they introduce into an estimator can be eliminated (controlled, blocked) by conditioning strategies, such as regression, matching, or stratification methods. To read more, see [@morganCounterfactualsCausalInference2014]. We can visualize this assumption by modifying our DAG, and using some examples in R:
 
 <center>
 <br />
@@ -145,7 +142,6 @@ A common response to this problem is to try to measure these differences and inc
 <br />
 </center>   
 
- 
 To explore the consequences of adding in covariates, we show the results of five models below. The first column repeats the first column from above. The second column adds in soil chemistry covariates, the third column instead adds weather covariates, and the fourth instead adds management variables plus habitat. The last columns adds in everything. For the purposes of this tutorial, we only show coefficient estimates for richness in the following table, even though the other terms are included in the model.
 
 ```{r message=FALSE, warning=FALSE}
