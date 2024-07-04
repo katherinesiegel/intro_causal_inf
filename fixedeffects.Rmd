@@ -52,6 +52,8 @@ library(fixest) # v 0.11
 library(lme4)  # Need at least version 1.1-26
 library(knitr) #v1.41
 library(ggplot2) # v 3.4.0
+library(ggdag) ## for making a directed acyclic graph (DAG)
+
 
 cdir <- getwd()
 comb <- fread(paste(cdir,"/cleaned_comb_data.csv",sep=""),na.strings='NA')
@@ -128,6 +130,40 @@ In our case, many variables that are correlated with biodiversity can also drive
 </center>   
 
 Figure 1, which is Figure 1B in *add in DEE CITATION*. 
+
+## Make DAG
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 10}
+### make dag
+dee_dag <- dagify(productivity ~ richness + confounders,
+                  richness ~ confounders,
+                  # productivity ~ mechanisms + predictors + confounders,
+                  # mechanisms ~ richness,
+                   
+                   ### label nodes
+                   labels = c("productivity" = "Productivity",
+                              "confounders" = "Confounding\n covariates",
+                              # "predictors" = "Additional\n predictors",
+                              # "mechanisms" = "Mechanisms",
+                              "richness" = "Richness"),
+                   exposure = "richness",
+                   outcome = "productivity",
+                   
+                   ### add coordinates
+                   coords = list(x = c(richness = 1, 
+                                       productivity = 3,
+                                       confounders = 2),
+                                 y = c(richness = 1, 
+                                       productivity = 1,
+                                       confounders = 2)))
+
+### plot dag
+ggdag_status(dee_dag,
+             use_labels = "label",
+             text = FALSE,
+             label_alpha = 0.5) +
+  guides(fill = FALSE, color = FALSE) +
+  theme_dag()
+```
 
 # Multivariate Regression that adjusts for confounding variables
 
