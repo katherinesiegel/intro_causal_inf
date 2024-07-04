@@ -268,7 +268,6 @@ ggplot(comb[site=="sedg.us" & plot %in% c("1","17") | (site=="sevi.us" & plot %i
   theme(axis.text.y = element_text(size = 14)) 
 ```
 
-
 To the statistical model: We're first going to estimate the following equation site-by-site on the five sites with the largest number of observations (in terms of the number plot-years we observe; see Table S1). 
 \begin{equation}
 \ln(\text{Live Mass}_{pt}) = \beta \ln(\text{Richness}_{pt}) + \delta_p + \mu_t + e_{pt}
