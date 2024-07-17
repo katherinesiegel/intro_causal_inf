@@ -63,7 +63,7 @@ ggdag_status(fire_dag,
 
 
 ## The data
-The data are in the file *matching_ipw_data_full.csv.*
+The data are in the file *matching_ipw_data.csv.*
 
 ### Variable names   
 
@@ -89,7 +89,7 @@ The data are in the file *matching_ipw_data_full.csv.*
 ## Data exploration
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 12}
 ### open data
-dat <- read_csv("matching_ipw_data_full.csv")
+dat <- read_csv("matching_ipw_data.csv")
 
 ### set factor variables
 dat <- dat %>%
