@@ -12,10 +12,10 @@ _matching_ipw_data.csv_: Data for use in Matching_Weighting.Rmd. Data are adapte
 ### Methods that condition on observable and unobservable confounders: Panel models and fixed effects  
 
 #### Code:
-_fixedeffects.Rmd_: Rmarkdown file with code demonstrating how to implement panel methods and fixed effects models using the fixest package (Berge 2018). This tutorial is adapted from a tutorial developed by Laura Dee and Chris Severen, published to accompany Dee et al. (2023).    
+_fixedeffects.Rmd_ (or _Fixed_Effects.Rmd_): Rmarkdown file with code demonstrating how to implement panel methods and fixed effects models using the fixest package (Berge 2018). This tutorial is adapted from a tutorial developed by Laura Dee and Chris Severen, published to accompany Dee et al. (2023).    
 
 #### Data:
-_cleaned_comb_data.csv_: Data for use in fixedeffects.Rmd. Processed and cleaned data are from Dee et al. (2023), with raw data from the Nutrient Network. Please refer to Dee et al. (2023) for additional information on data sources and pre-processing methods.
+_cleaned_comb_data.csv_ (or _fixed_effects_data.csv_): Data for use in fixedeffects.Rmd. Processed and cleaned data are from Dee et al. (2023), with raw data from the Nutrient Network. Please refer to Dee et al. (2023) for additional information on data sources and pre-processing methods.
 
 ### References
 Berge L (2018). Efficient estimation of maximum likelihood models with multiple fixed-effects: the R package FENmlm. _CREA Discussion Papers_.
