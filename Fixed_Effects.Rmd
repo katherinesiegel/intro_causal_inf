@@ -200,7 +200,7 @@ Where did $\lambda_p$ go? Well, $\lambda_p-\lambda_p=0$, so we don't need it. (N
 
 What do we have to assume for a causal interpretation? There are a couple of different assumptions we could choose; I think it's easiest to frame it like this: $\mathbb{E}[ (e_{pt} - e_{pt-1}) \times (\ln(\text{Richness}_{pt}) - \ln(\text{Richness}_{pt-1}))]=0$. That is, changes in richness are uncorrelated with *changes in* unobserved determinants of richness. Because time-invariant unobservable variables do not change, they are no longer a concern! Instead, we're concerned if movements in some unobserved factor could both be driving our outcome variable and be correlated with richness.
 
-The figures below illustrate graphically what the plot fixed effects do to the outcome variable (productivity). First, we plot he raw data, and showing log(live mass) in four plots split between two sites (at the Sedgwick Reserve and at the Sevilleta LTER). Sedgwick has higher productivity on average. The productivity at these sites also appears to be following different trajectories through time (e.g., note the dip in productivity at Sevilleta in 2009).
+The figures below illustrate graphically what the plot fixed effects do to the outcome variable (productivity). First, we plot he raw data, and showing log(live mass) in four plots split between two sites (at the Sedgwick Reserve and at the Sevilleta Long Term Ecological Research sites). Sedgwick has higher productivity on average. The productivity at these sites also appears to be following different trajectories through time (e.g., note the dip in productivity at Sevilleta in 2009).
 
 #### Data prep
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
