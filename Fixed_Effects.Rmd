@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ## Description
-This tutorial demonstrates how to use panel data and fixed effects designs using a real dataset from [Dee et al. 2023](https://doi.org/10.1038/s41467-023-37194-5). It is modified from the online tutorial for the main analyses run in Dee et al. (2023) Nature Communications, originally written by Laura Dee and Chris Severen with data from the Nutrient Network
+This tutorial demonstrates how to use panel data and fixed effects designs using a real dataset from Dee et al. 2023 (https://doi.org/10.1038/s41467-023-37194-5). It is modified from the online tutorial for the main analyses run in Dee et al. (2023) Nature Communications, originally written by Laura Dee and Chris Severen with data from the Nutrient Network.
 
 ## Set up
 Load the packages used for data manipulation (tidyverse, data.table), making a directed acyclic graph (ggdag), and analysis (fixest, lme4).
@@ -65,7 +65,7 @@ ggdag_status(nutnet_dag,
 ## The data
 The data are in the file *fixed_effects_data.csv.*
 
-The original data come from the [Nutrient Network](https://nutnet.org/) or "NutNet." Dee et al. (2023) cleaned and processed the data for their analyses: these data are available in the [project release on Zenodo] (https://zenodo.org/records/7675340). The data consist of control plots from 43 NutNet sites, with at least 5 years of data.
+The original data come from the Nutrient Network (https://nutnet.org/) or "NutNet." Dee et al. (2023) cleaned and processed the data for their analyses: these data are available in the project release on Zenodo (https://zenodo.org/records/7675340). The data consist of control plots from 43 NutNet sites, with at least 5 years of data.
 
 ### Variable names   
 The dataset contains a wide number of variables; we'll mainly be using the variables *live_mass* (live aboveground biomass) and *rich* (plant species richness). Also important are the *site_code*, *plot*, and *year* variables, which we use to create fixed effects. site.by.yeardummy is a dummy variable for the interaction between the site and the year.
