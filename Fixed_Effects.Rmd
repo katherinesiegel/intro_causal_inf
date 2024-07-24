@@ -72,7 +72,7 @@ The dataset contains a wide number of variables; we'll mainly be using the varia
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### open data
-comb <- fread("fixed_effects_data.csv")
+comb <- fread("data/fixed_effects_data.csv")
 ```
 
 ## Naive correlations in single years
