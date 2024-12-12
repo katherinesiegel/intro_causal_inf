@@ -2,7 +2,7 @@
 title: "Tutorial on panel data and fixed effects designs"
 author: "Laura Dee and Chris Severen"
 date: "2024-07-17"
-output: pdf_document
+output: html_document
 ---
 
 ## Description

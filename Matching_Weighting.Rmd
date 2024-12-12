@@ -2,7 +2,7 @@
 title: "Tutorial on propensity score matching and inverse probability of treatment weighting"
 author: "Katherine Siegel and Laura Dee"
 date: "2024-06-17"
-output: pdf_document
+output: html_document
 ---
 
 ## Description
